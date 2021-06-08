@@ -1,0 +1,43 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/siguago/qwlib"
+	"github.com/spf13/viper"
+)
+
+func main() {
+	loadConfig("/workspaces/qwlib/config")
+	client, err := qwlib.NewClient(
+		viper.GetString("enterprise_wechat.crop_id"),
+		viper.GetString("enterprise_wechat.crop_secret"),
+		map[uint32]string{
+			1: qwlib.ReadFile(viper.GetStringSlice("enterprise_wechat.private_pems")[0]),
+			2: qwlib.ReadFile(viper.GetStringSlice("enterprise_wechat.private_pems")[1]),
+		})
+	if err != nil {
+		log.Fatalf("init wework client failed: %v", err)
+	}
+	defer client.Free()
+	messages, err := client.GetChatList(0, 1000, "", "", 30)
+	if err != nil {
+		log.Fatalf("获取消息内容异常: %v", err)
+	}
+	for _, message := range messages {
+		if message.Content != nil {
+			fmt.Println(message.Content)
+		}
+	}
+}
+
+func loadConfig(path string) (err error) {
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(path)
+	err = viper.ReadInConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
+}
