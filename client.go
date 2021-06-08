@@ -62,13 +62,13 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 			err = fmt.Errorf("解析消息内容失败：%v", decryptErr)
 			return
 		}
+		message.Seq = chatData.Seq
 		if v, exists := message.Content["sdkfileid"]; exists && v != nil {
 			mediaData, getMediaErr := this.GetMediaData("", v.(string), proxy, password, timeout)
 			if getMediaErr != nil {
 				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
 				return
 			}
-			message.Seq = chatData.Seq
 			message.MediaData = mediaData.Data
 		}
 		messages = append(messages, *message)
