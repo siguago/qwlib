@@ -119,8 +119,8 @@ type BaseMessage struct {
 	MsgType MessageType `json:"msgtype,omitempty"` // 文本消息为：text。
 }
 
-func (this BaseMessage) ID() string {
-	return this.MsgId
+func (bm BaseMessage) ID() string {
+	return bm.MsgId
 }
 
 type CommonMessage struct {
@@ -317,8 +317,8 @@ type SwitchMessage struct {
 	User   string `json:"user,omitempty"`   // 具体为切换企业的成员的userid。
 }
 
-func (this SwitchMessage) ID() string {
-	return this.MsgId
+func (sm SwitchMessage) ID() string {
+	return sm.MsgId
 }
 
 type ChatRecord struct {

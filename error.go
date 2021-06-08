@@ -23,8 +23,8 @@ type Error struct {
 	ErrMsg  string `json:"errmsg,omitempty"`
 }
 
-func (this Error) Error() string {
-	return fmt.Sprintf("%d:%s", this.ErrCode, this.ErrMsg)
+func (err Error) Error() string {
+	return fmt.Sprintf("%d:%s", err.ErrCode, err.ErrMsg)
 }
 
 func NewSDKErr(code int) Error {

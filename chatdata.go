@@ -5,8 +5,8 @@ type ChatDataResponse struct {
 	ChatDataList []ChatData `json:"chatdata,omitempty"`
 }
 
-func (this ChatDataResponse) IsError() bool {
-	return this.ErrCode != 0
+func (cdr ChatDataResponse) IsError() bool {
+	return cdr.ErrCode != 0
 }
 
 type ChatData struct {

@@ -6,10 +6,8 @@ package qwlib
 // #include "WeWorkFinanceSdk_C.h"
 import "C"
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"unsafe"
 
 	"github.com/wenzhenxi/gorsa"
@@ -46,25 +44,25 @@ func NewClient(corpId string, corpSecret string, privateKeys map[uint32]string) 
 	}, nil
 }
 
-func (this *Client) Free() {
-	C.DestroySdk(this.ptr)
+func (client *Client) Free() {
+	C.DestroySdk(client.ptr)
 }
 
-func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (messages []CommonMessage, err error) {
-	chatDatas, err := this.GetChatData(seq, limit, proxy, password, timeout)
+func (client *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (messages []CommonMessage, err error) {
+	chatDatas, err := client.GetChatData(seq, limit, proxy, password, timeout)
 	if err != nil {
 		return
 	}
 	messages = make([]CommonMessage, 0)
 	for _, chatData := range chatDatas {
-		message, decryptErr := this.DecryptData(chatData.PublickeyVer, chatData.EncryptRandomKey, chatData.EncryptChatMsg)
+		message, decryptErr := client.DecryptData(chatData.PublickeyVer, chatData.EncryptRandomKey, chatData.EncryptChatMsg)
 		if decryptErr != nil {
 			err = fmt.Errorf("解析消息内容失败：%v", decryptErr)
 			return
 		}
 		message.Seq = chatData.Seq
 		if v, exists := message.Content["sdkfileid"]; exists && v != nil {
-			mediaData, getMediaErr := this.GetMediaData("", v.(string), proxy, password, timeout)
+			mediaData, getMediaErr := client.GetMediaData("", v.(string), proxy, password, timeout)
 			if getMediaErr != nil {
 				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
 				return
@@ -89,7 +87,7 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 
 {"errcode":0,"errmsg":"ok","chatdata":[{"seq":196,"msgid":"CAQQ2fbb4QUY0On2rYSAgAMgip/yzgs=","publickey_ver":3,"encrypt_random_key":"ftJ+uz3n/z1DsxlkwxNgE+mL38H42/KCvN8T60gbbtPD+Rta1hKTuQPzUzO6Hzne97MgKs7FfdDxDck/v8cDT6gUVjA2tZ/M7euSD0L66opJ/IUeBtpAtvgVSD5qhlaQjvfKJc/zPMGNK2xCLFYqwmQBZXbNT7uA69Fflm512nZKW/piK2RKdYJhRyvQnA1ISxK097sp9WlEgDg250fM5tgwMjujdzr7ehK6gtVBUFldNSJS7ndtIf6aSBfaLktZgwHZ57ONewWq8GJe7WwQf1hwcDbCh7YMG8nsweEwhDfUz+u8rz9an+0lgrYMZFRHnmzjgmLwrR7B/32Qxqd79A==","encrypt_chat_msg":"898WSfGMnIeytTsea7Rc0WsOocs0bIAerF6de0v2cFwqo9uOxrW9wYe5rCjCHHH5bDrNvLxBE/xOoFfcwOTYX0HQxTJaH0ES9OHDZ61p8gcbfGdJKnq2UU4tAEgGb8H+Q9n8syRXIjaI3KuVCqGIi4QGHFmxWenPFfjF/vRuPd0EpzUNwmqfUxLBWLpGhv+dLnqiEOBW41Zdc0OO0St6E+JeIeHlRZAR+E13Isv9eS09xNbF0qQXWIyNUi+ucLr5VuZnPGXBrSfvwX8f0QebTwpy1tT2zvQiMM2MBugKH6NuMzzuvEsXeD+6+3VRqL"}]}
 */
-func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd string, timeout int) ([]ChatData, error) {
+func (client *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd string, timeout int) ([]ChatData, error) {
 	proxyC := C.CString(proxy)
 	passwdC := C.CString(passwd)
 	chatSlice := C.NewSlice()
@@ -99,15 +97,12 @@ func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd s
 		C.FreeSlice(chatSlice)
 	}()
 
-	retC := C.GetChatData(this.ptr, C.ulonglong(seq), C.uint(limit), proxyC, passwdC, C.int(timeout), chatSlice)
+	retC := C.GetChatData(client.ptr, C.ulonglong(seq), C.uint(limit), proxyC, passwdC, C.int(timeout), chatSlice)
 	ret := int(retC)
 	if ret != 0 {
 		return nil, NewSDKErr(ret)
 	}
-	buf := this.GetContentFromSlice(chatSlice)
-
-	buffer := bytes.NewBuffer(buf)
-	buffer.WriteTo(os.Stdout)
+	buf := client.GetContentFromSlice(chatSlice)
 
 	var data ChatDataResponse
 	err := json.Unmarshal(buf, &data)
@@ -126,9 +121,9 @@ func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd s
 * @param [in]  encrypt_msg, getchatdata返回的encrypt_chat_msg
 * @return msg, 解密的消息明文
  */
-func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg string) (message *CommonMessage, err error) {
+func (client *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg string) (message *CommonMessage, err error) {
 	message = new(CommonMessage)
-	decodeKey, err := gorsa.PriKeyDecrypt(encryptKey, this.privateKeys[keyVersion])
+	decodeKey, err := gorsa.PriKeyDecrypt(encryptKey, client.privateKeys[keyVersion])
 	if err != nil {
 		return nil, fmt.Errorf("decode encryptKey(%s) failed: %v", encryptKey, err)
 	}
@@ -145,7 +140,7 @@ func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg
 	if ret != 0 {
 		return nil, NewSDKErr(ret)
 	}
-	buf := this.GetContentFromSlice(msgSlice)
+	buf := client.GetContentFromSlice(msgSlice)
 	err = json.Unmarshal(buf, message)
 	var messageContentMap = make(map[string]interface{})
 	err = json.Unmarshal(buf, &messageContentMap)
@@ -168,7 +163,7 @@ func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg
  * @return media_data      返回本次拉取的媒体数据.MediaData结构体.内容包括data(数据内容)/outindexbuf(下次索引)/is_finish(拉取完成标记)
  */
 
-func (this *Client) GetMediaData(indexBuf string, sdkFileId string, proxy string, passwd string, timeout int) (*MediaData, error) {
+func (client *Client) GetMediaData(indexBuf string, sdkFileId string, proxy string, passwd string, timeout int) (*MediaData, error) {
 	indexBufC := C.CString(indexBuf)
 	sdkFileIdC := C.CString(sdkFileId)
 	proxyC := C.CString(proxy)
@@ -182,7 +177,7 @@ func (this *Client) GetMediaData(indexBuf string, sdkFileId string, proxy string
 		C.FreeMediaData(mediaDataC)
 	}()
 
-	retC := C.GetMediaData(this.ptr, indexBufC, sdkFileIdC, proxyC, passwdC, C.int(timeout), mediaDataC)
+	retC := C.GetMediaData(client.ptr, indexBufC, sdkFileIdC, proxyC, passwdC, C.int(timeout), mediaDataC)
 	ret := int(retC)
 	if ret != 0 {
 		return nil, NewSDKErr(ret)
@@ -194,6 +189,6 @@ func (this *Client) GetMediaData(indexBuf string, sdkFileId string, proxy string
 	}, nil
 }
 
-func (this *Client) GetContentFromSlice(slice *C.struct_Slice_t) []byte {
+func (client *Client) GetContentFromSlice(slice *C.struct_Slice_t) []byte {
 	return C.GoBytes(unsafe.Pointer(C.GetContentFromSlice(slice)), C.GetSliceLen(slice))
 }
