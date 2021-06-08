@@ -6,8 +6,10 @@ package qwlib
 // #include "WeWorkFinanceSdk_C.h"
 import "C"
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"unsafe"
 
 	"github.com/wenzhenxi/gorsa"
@@ -103,6 +105,10 @@ func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd s
 		return nil, NewSDKErr(ret)
 	}
 	buf := this.GetContentFromSlice(chatSlice)
+
+	buffer := bytes.NewBuffer(buf)
+	buffer.WriteTo(os.Stdout)
+
 	var data ChatDataResponse
 	err := json.Unmarshal(buf, &data)
 	if err != nil {
