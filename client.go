@@ -6,6 +6,7 @@ package qwlib
 // #include "WeWorkFinanceSdk_C.h"
 import "C"
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"unsafe"
@@ -62,12 +63,12 @@ func (client *Client) GetChatList(seq uint64, limit uint64, proxy string, passwo
 		}
 		message.Seq = chatData.Seq
 		if v, exists := message.Content["sdkfileid"]; exists && v != nil {
-			mediaData, getMediaErr := client.GetMediaData("", v.(string), proxy, password, timeout)
+			mediaDataBuffer, getMediaErr := client.GetWholeMediaData("", v.(string), proxy, password, timeout)
 			if getMediaErr != nil {
-				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
+				err = fmt.Errorf("获取媒体资源文件失败：%v", getMediaErr)
 				return
 			}
-			message.MediaData = mediaData.Data
+			message.MediaData = mediaDataBuffer.Bytes()
 		}
 		messages = append(messages, *message)
 	}
@@ -191,4 +192,23 @@ func (client *Client) GetMediaData(indexBuf string, sdkFileId string, proxy stri
 
 func (client *Client) GetContentFromSlice(slice *C.struct_Slice_t) []byte {
 	return C.GoBytes(unsafe.Pointer(C.GetContentFromSlice(slice)), C.GetSliceLen(slice))
+}
+
+// GetWholeMediaData 获取完整的媒体数据
+func (client *Client) GetWholeMediaData(indexBuf string, sdkFileId string, proxy string, passwd string, timeout int) (*bytes.Buffer, error) {
+	mediaData, err := client.GetMediaData(indexBuf, sdkFileId, proxy, passwd, timeout)
+	if err != nil {
+		return nil, err
+	}
+	result := bytes.NewBuffer(make([]byte, 0))
+	result.Write(mediaData.Data)
+	for !mediaData.IsFinish {
+		nextMediaData, err := client.GetMediaData(mediaData.OutIndexBuf, sdkFileId, proxy, passwd, timeout)
+		if err != nil {
+			return nil, err
+		}
+		result.Write(nextMediaData.Data)
+		mediaData = nextMediaData
+	}
+	return result, nil
 }
